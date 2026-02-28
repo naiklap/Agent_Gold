@@ -52,19 +52,26 @@ def get_portfolio_summary():
         total_cost = 0
         
         for row in data:
-            # แก้ชื่อ Key ให้ตรงกับหัวตารางในรูปของพี่เป๊ะๆ ค๊า
-            # สังเกต "น้ำหนัก (กรัม)" และ "ราคารวม (บาท)" นะคะ
-            weight = row.get('น้ำหนัก (กรัม)')
-            cost = row.get('ราคารวม (บาท)')
+            # --- จุดสำคัญ: เช็กว่าเป็นรายการ 'ซื้อ' หรือ 'ขาย' เท่านั้น ---
+            # เพื่อป้องกันไม่ให้ไปดึงแถว "รวม" มาบวกซ้ำค๊า
+            type_trade = str(row.get('ประเภท', '')).strip()
             
-            if weight is not None and weight != "":
-                total_weight += float(str(weight).replace(',', ''))
-            if cost is not None and cost != "":
-                total_cost += float(str(cost).replace(',', ''))
+            if type_trade in ['ซื้อ', 'ขาย']:
+                weight = row.get('น้ำหนัก (กรัม)')
+                cost = row.get('ราคารวม (บาท)')
+                
+                if weight and weight != "":
+                    # ถ้าเป็น 'ขาย' ให้ลบน้ำหนักออก (ถ้าพี่มีบันทึกขายในอนาคตค๊า)
+                    val_w = float(str(weight).replace(',', ''))
+                    total_weight += val_w if type_trade == 'ซื้อ' else -val_w
+                    
+                if cost and cost != "":
+                    val_c = float(str(cost).replace(',', ''))
+                    total_cost += val_c if type_trade == 'ซื้อ' else -val_c
             
         return {
-            "total_weight": total_weight,
-            "total_cost": total_cost,
+            "total_weight": round(total_weight, 4),
+            "total_cost": round(total_cost, 2),
             "avg_price": (total_cost / total_weight * 15.244) if total_weight > 0 else 0
         }
     except Exception as e:
