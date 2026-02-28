@@ -27,49 +27,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def analyze_gold(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query_msg = await update.message.reply_text("🔍 กำลังเรียกประชุมทีมเอเจ้นท์... โปรดรอสักครู่นะคะ")
+    # 1. ส่งข้อความเริ่มงาน
+    await update.message.reply_text("🔍 กำลังเรียกประชุมทีมเอเจ้นท์... น้อง Golden กำลังตามทุกคนให้นะค๊า")
 
     try:
-        # --- 1. รวบรวมข้อมูล ---
+        # --- ดึงข้อมูล ---
         raw_price = tools.get_latest_prices()
-        price_data = raw_price if isinstance(raw_price, dict) else {"spot": "N/A", "raw": str(raw_price)}
+        price_data = raw_price if isinstance(raw_price, dict) else {"spot": "N/A"}
         
         raw_portfolio = tools.get_portfolio_summary()
-        portfolio_data = raw_portfolio if isinstance(raw_portfolio, dict) else {"total_weight": 0, "avg_price": 0}
+        portfolio_data = raw_portfolio if isinstance(raw_portfolio, dict) else {"total_weight": 0}
 
-        # --- 2. ส่งเอเจ้นท์วิเคราะห์ ---
+        # --- 2. ส่งเอเจ้นท์วิเคราะห์และ "ส่งแยกข้อความทันที" ---
+        
+        # Agent 1: นักสืบราคา
         report_1 = agents.ask_agent("นักสืบราคา", f"ราคา: {price_data}")
+        await update.message.reply_text(f"🕵️ **รายงานจากนักสืบราคา:**\n\n{report_1}")
+
+        # Agent 2: นักเทคนิค
         report_2 = agents.ask_agent("นักเทคนิค", f"Spot: {price_data.get('spot')}")
+        await update.message.reply_text(f"📊 **รายงานจากนักเทคนิค:**\n\n{report_2}")
+
+        # Agent 6: ผู้ควบคุมความเสี่ยง
         report_6 = agents.ask_agent("ผู้ควบคุมความเสี่ยง", f"พอร์ต: {portfolio_data}")
+        await update.message.reply_text(f"🛡️ **รายงานจากผู้ควบคุมความเสี่ยง:**\n\n{report_6}")
 
-        # --- 3. แสดงรายงานย่อย (ปิด ParseMode เพื่อความปลอดภัย) ---
-        brief_reports = (
-            "📝 บันทึกการประชุมเอเจ้นท์:\n\n"
-            f"🕵️ นักสืบ: {report_1}\n\n"
-            f"📊 เทคนิค: {report_2}\n\n"
-            f"🛡️ ความเสี่ยง: {report_6}\n"
-            "--------------------------"
-        )
-        # ส่งแบบข้อความธรรมดา (ไม่ใส่ parse_mode) เพื่อป้องกันสัญลักษณ์พิเศษทำพิษค๊า
-        await context.bot.edit_message_text(
-            chat_id=update.effective_chat.id,
-            message_id=query_msg.message_id,
-            text=brief_reports
-        )
-
-        # --- 4. สรุปฟันธง ---
-        final_decision = agents.ask_agent("หัวหน้า Golden", f"สรุปจาก: {report_1}, {report_2}, {report_6}")
+        # --- 3. หัวหน้า Golden สรุปปิดท้าย ---
+        final_decision = agents.ask_agent("หัวหน้า Golden", f"สรุปจากรายงานทั้ง 3 ฉบับด้านบนให้พี่หน่อยค๊า")
         
-        full_summary = f"🏆 **บทสรุปจากน้อง Golden**\n\n{final_decision}"
-        
-        # ตรงสรุปผล น้องจะใช้ MarkdownV2 แบบระมัดระวัง หรือส่งธรรมดาก็ได้ค่ะ
-        await update.message.reply_text(full_summary)
+        await update.message.reply_text(
+            f"🏆 **บทสรุปสุดท้ายจากน้อง Golden ค๊า!**\n\n{final_decision}",
+            parse_mode=None # ปิด parse_mode เพื่อความปลอดภัยสูงสุดค่ะ
+        )
 
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        error_text = f"ฮึบ! บั๊กยังอยู่ค๊า: {str(e)}"
-        await update.message.reply_text(error_text)
+        await update.message.reply_text(f"ฮึบ! บั๊กยังอยู่ค๊า: {str(e)}")
 def main():
     # 1. รัน Web Server แยก Thread
     threading.Thread(target=run_web, daemon=True).start()
