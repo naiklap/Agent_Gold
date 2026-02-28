@@ -27,7 +27,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def analyze_gold(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ส่งข้อความเริ่มต้น
     query_msg = await update.message.reply_text("🔍 กำลังเรียกประชุมทีมเอเจ้นท์... โปรดรอสักครู่นะคะ")
 
     try:
@@ -43,41 +42,34 @@ async def analyze_gold(update: Update, context: ContextTypes.DEFAULT_TYPE):
         report_2 = agents.ask_agent("นักเทคนิค", f"Spot: {price_data.get('spot')}")
         report_6 = agents.ask_agent("ผู้ควบคุมความเสี่ยง", f"พอร์ต: {portfolio_data}")
 
-        # --- 3. แสดงรายงานย่อย ---
+        # --- 3. แสดงรายงานย่อย (ปิด ParseMode เพื่อความปลอดภัย) ---
         brief_reports = (
-            "📝 **บันทึกการประชุมเอเจ้นท์:**\n\n"
-            f"🕵️ **นักสืบ:** {report_1}\n"
-            f"📊 **เทคนิค:** {report_2}\n"
-            f"🛡️ **ความเสี่ยง:** {report_6}\n"
+            "📝 บันทึกการประชุมเอเจ้นท์:\n\n"
+            f"🕵️ นักสืบ: {report_1}\n\n"
+            f"📊 เทคนิค: {report_2}\n\n"
+            f"🛡️ ความเสี่ยง: {report_6}\n"
             "--------------------------"
         )
+        # ส่งแบบข้อความธรรมดา (ไม่ใส่ parse_mode) เพื่อป้องกันสัญลักษณ์พิเศษทำพิษค๊า
         await context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             message_id=query_msg.message_id,
-            text=brief_reports,
-            parse_mode=constants.ParseMode.MARKDOWN
+            text=brief_reports
         )
 
         # --- 4. สรุปฟันธง ---
         final_decision = agents.ask_agent("หัวหน้า Golden", f"สรุปจาก: {report_1}, {report_2}, {report_6}")
-        await update.message.reply_text(f"🏆 **ฟันธง:**\n{final_decision}", parse_mode=constants.ParseMode.MARKDOWN)
+        
+        full_summary = f"🏆 **บทสรุปจากน้อง Golden**\n\n{final_decision}"
+        
+        # ตรงสรุปผล น้องจะใช้ MarkdownV2 แบบระมัดระวัง หรือส่งธรรมดาก็ได้ค่ะ
+        await update.message.reply_text(full_summary)
 
     except Exception as e:
         import traceback
         print(traceback.format_exc())
         error_text = f"ฮึบ! บั๊กยังอยู่ค๊า: {str(e)}"
-        if query_msg:
-            try:
-                await context.bot.edit_message_text(
-                    chat_id=update.effective_chat.id,
-                    message_id=query_msg.message_id,
-                    text=error_text
-                )
-            except:
-                await update.message.reply_text(error_text)
-        else:
-            await update.message.reply_text(error_text)
-
+        await update.message.reply_text(error_text)
 def main():
     # 1. รัน Web Server แยก Thread
     threading.Thread(target=run_web, daemon=True).start()
