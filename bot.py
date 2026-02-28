@@ -52,6 +52,26 @@ def analyze_gold(update: Update, context: CallbackContext):
         text=full_message,
         parse_mode=ParseMode.MARKDOWN
     )
+from flask import Flask
+import threading
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "น้อง Golden กำลังเฝ้าทองให้พี่อยู่นะค๊า! ✨"
+
+def run_web():
+    # Render จะส่ง Port มาให้ทาง Environment Variable ชื่อ PORT ค่ะ
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+# ในฟังก์ชัน main() ให้เพิ่มบรรทัดนี้ก่อน updater.start_polling()
+def main():
+    # ... โค้ดเดิม ...
+    threading.Thread(target=run_web).start() # เริ่ม Web Server เล็กๆ เพื่อหลอก Render ว่าเราเป็น Web Service
+    updater.start_polling()
+    updater.idle()
 
 def main():
     TOKEN = os.getenv("TELEGRAM_TOKEN")
