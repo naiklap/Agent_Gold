@@ -15,7 +15,6 @@ def home():
     return "น้อง Golden กำลังเฝ้าทองให้พี่อยู่นะค๊า! ✨"
 
 def run_web():
-    # ดึง Port จาก Environment Variable ที่ Render กำหนด (Default คือ 10000)
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
@@ -31,8 +30,8 @@ async def analyze_gold(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # ส่งข้อความเริ่มต้น
     query_msg = await update.message.reply_text("🔍 กำลังเรียกประชุมทีมเอเจ้นท์... โปรดรอสักครู่นะคะ")
 
-   try:
-        # --- 1. รวบรวมข้อมูล (ใส่ค่า Default กันเหนียวถ้าไม่ใช่ dict) ---
+    try:
+        # --- 1. รวบรวมข้อมูล ---
         raw_price = tools.get_latest_prices()
         price_data = raw_price if isinstance(raw_price, dict) else {"spot": "N/A", "raw": str(raw_price)}
         
@@ -64,24 +63,33 @@ async def analyze_gold(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"🏆 **ฟันธง:**\n{final_decision}", parse_mode=constants.ParseMode.MARKDOWN)
 
     except Exception as e:
-        # ถ้ายยังมี Error น้องจะพ่นออกมาเลยว่าบรรทัดไหนพัง
         import traceback
-        print(traceback.format_exc()) # ดูใน Log ของ Render จะเห็นละเอียดเลยค่ะ
-        await update.message.reply_text(f"ฮึบ! บั๊กยังอยู่ค๊า: {str(e)}")
+        print(traceback.format_exc())
+        error_text = f"ฮึบ! บั๊กยังอยู่ค๊า: {str(e)}"
+        if query_msg:
+            try:
+                await context.bot.edit_message_text(
+                    chat_id=update.effective_chat.id,
+                    message_id=query_msg.message_id,
+                    text=error_text
+                )
+            except:
+                await update.message.reply_text(error_text)
+        else:
+            await update.message.reply_text(error_text)
 
 def main():
-    # 1. รัน Web Server แยก Thread เพื่อหลอก Render ว่าเราเป็น Web Service
+    # 1. รัน Web Server แยก Thread
     threading.Thread(target=run_web, daemon=True).start()
 
     # 2. เริ่มต้นระบบบอท Telegram
     TOKEN = os.getenv("TELEGRAM_TOKEN")
     if not TOKEN:
-        print("Error: ไม่พบ TELEGRAM_TOKEN ใน Environment Variables ค๊า!")
+        print("Error: ไม่พบ TELEGRAM_TOKEN ค๊า!")
         return
 
     application = ApplicationBuilder().token(TOKEN).build()
     
-    # เพิ่มคำสั่งการใช้งาน
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("analyze", analyze_gold))
 
