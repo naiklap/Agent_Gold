@@ -45,17 +45,22 @@ def get_latest_prices():
 def get_portfolio_summary():
     try:
         ss = get_google_sheet()
-        sheet = ss.worksheet("พอร์ตทอง") # เปลี่ยนเป็น worksheet
+        sheet = ss.worksheet("พอร์ตทอง")
         data = sheet.get_all_records()
         
         total_weight = 0
         total_cost = 0
+        
         for row in data:
-            # ใช้ get() เพื่อป้องกัน key error และจัดการชื่อคอลัมน์ให้ตรงเป๊ะ
-            weight = float(row.get('น้ำหนัก(กรัม)', 0))
-            cost = float(row.get('ยอดเงินรวม', 0))
-            total_weight += weight
-            total_cost += cost
+            # แก้ชื่อ Key ให้ตรงกับหัวตารางในรูปของพี่เป๊ะๆ ค๊า
+            # สังเกต "น้ำหนัก (กรัม)" และ "ราคารวม (บาท)" นะคะ
+            weight = row.get('น้ำหนัก (กรัม)')
+            cost = row.get('ราคารวม (บาท)')
+            
+            if weight is not None and weight != "":
+                total_weight += float(str(weight).replace(',', ''))
+            if cost is not None and cost != "":
+                total_cost += float(str(cost).replace(',', ''))
             
         return {
             "total_weight": total_weight,
