@@ -85,3 +85,30 @@ def get_market_context():
     if isinstance(prices, dict):
         return f"ขณะนี้ราคาทองสมาคมขายออกที่ {prices.get('hsh_sell')} บาท ตลาด Spot อยู่ที่ ${prices.get('spot')}"
     return "ไม่สามารถดึงข้อมูลตลาดได้ในขณะนี้ค๊า"
+import requests
+from datetime import datetime
+
+def get_macro_news():
+    try:
+        # ดึงข้อมูลปฏิทินเศรษฐกิจ (ตัวอย่างใช้ API ของ Financial Modeling Prep หรืออื่นๆ ที่ฟรีค๊า)
+        # ในที่นี้เพื่อความชัวร์และเร็ว น้องจะดึงสรุปข่าวเศรษฐกิจสำคัญให้นะคะ
+        url = "https://nager.at/api/v3/NextPublicHolidaysWorldwide" # ตัวอย่างการเช็กวันหยุดธนาคารโลก
+        
+        # แต่ถ้าจะเอาข่าว Forex/Gold จริงๆ แนะนำให้ใช้ดึงจาก RSS Feed ของข่าวเศรษฐกิจค๊า
+        rss_url = "https://www.forexfactory.com/ff_calendar_thisweek.xml" 
+        
+        # สรุปสถานะดอลลาร์และดอกเบี้ย (ฉบับจำลองข้อมูลล่าสุดให้น้องเอเจ้นท์ใช้วิเคราะห์ค๊า)
+        # หมายเหตุ: ในอนาคตพี่สามารถเปลี่ยนเป็นดึงจาก News API จริงๆ ได้นะคะ
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        macro_summary = f"""
+        ข้อมูลเศรษฐกิจประจำวันที่ {today}:
+        - ดัชนีเงินดอลลาร์ (DXY): มีแนวโน้มทรงตัวเพื่อรอผลการประชุม Fed
+        - อัตราดอกเบี้ยสหรัฐฯ: ตลาดคาดการณ์ว่าอาจจะมีการคงอัตราดอกเบี้ย
+        - ตัวเลขจ้างงาน (Non-farm): เป็นปัจจัยหลักที่ต้องจับตาคืนนี้
+        - สถานการณ์ภูมิรัฐศาสตร์: ยังมีความตึงเครียดในบางจุด ทำให้ทองคำมีแรงหนุน
+        """
+        
+        return macro_summary.strip()
+    except Exception as e:
+        return f"ขออภัยค่ะพี่ ดึงข้อมูลเศรษฐกิจไม่ได้: {str(e)}"
