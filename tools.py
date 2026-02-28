@@ -4,24 +4,29 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 
 def get_google_sheet():
-    # เชื่อมต่อกับ Google Sheet โดยใช้สิทธิ์จาก Environment Variable
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_json = os.getenv("GOOGLE_SHEET_CREDENTIALS")
+    
+    if not creds_json:
+        raise Exception("ไม่พบ GOOGLE_SHEET_CREDENTIALS ใน Environment Variables ค๊า")
+        
     creds_dict = json.loads(creds_json)
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     
-    # ใช้ ID ของชีตที่พี่ให้มา (จาก URL ของพี่)
     sheet_id = "1K00NyHY5tcjtrwnm4tj1BrYWkP9OXYgzK8aQDSU0BKw"
     return client.open_by_key(sheet_id)
 
-# --- สำหรับ Agent 1: ดึงราคาล่าสุดจากหน้า GoldHistory ที่ GAS บันทึกไว้ ---
+# --- สำหรับ Agent 1: ดึงราคาล่าสุด ---
 def get_latest_prices():
     try:
         ss = get_google_sheet()
-        sheet = ss.getSheetByName("GoldHistory") # ชื่อต้องตรงกับในโค้ด GAS
+        # เปลี่ยนจาก getSheetByName เป็น worksheet ค่ะ
+        sheet = ss.worksheet("GoldHistory") 
         data = sheet.get_all_values()
-        latest = data[1] # แถวที่ 2 (เพราะ GAS ใช้ insertRowBefore(2))
+        
+        # GAS insertRowBefore(2) หมายถึงข้อมูลใหม่อยู่แถวที่ 2 (index 1)
+        latest = data[1] 
         
         return {
             "time": latest[0],
@@ -29,24 +34,28 @@ def get_latest_prices():
             "usdthb": latest[2],
             "hsh_buy": latest[3],
             "hsh_sell": latest[4],
-            "diff": latest[7]
+            "diff": latest[7] if len(latest) > 7 else "0"
         }
     except Exception as e:
-        return f"Error ดึงราคา: {str(e)}"
+        print(f"Error get_latest_prices: {e}")
+        # คืนค่าเป็น dict เปล่าเพื่อให้ bot.py ไม่พังค๊า
+        return {"spot": "N/A", "hsh_sell": "N/A", "error": str(e)}
 
-# --- สำหรับ Agent 6: วิเคราะห์พอร์ตจากหน้า พอร์ตทอง ---
+# --- สำหรับ Agent 6: วิเคราะห์พอร์ต ---
 def get_portfolio_summary():
     try:
         ss = get_google_sheet()
-        sheet = ss.getSheetByName("พอร์ตทอง")
-        # ดึงข้อมูลทั้งหมดมาคำนวณ (หรือจะให้ Python สรุปใหม่เพื่อความฉลาด)
+        sheet = ss.worksheet("พอร์ตทอง") # เปลี่ยนเป็น worksheet
         data = sheet.get_all_records()
         
         total_weight = 0
         total_cost = 0
         for row in data:
-            total_weight += float(row['น้ำหนัก(กรัม)'])
-            total_cost += float(row['ยอดเงินรวม'])
+            # ใช้ get() เพื่อป้องกัน key error และจัดการชื่อคอลัมน์ให้ตรงเป๊ะ
+            weight = float(row.get('น้ำหนัก(กรัม)', 0))
+            cost = float(row.get('ยอดเงินรวม', 0))
+            total_weight += weight
+            total_cost += cost
             
         return {
             "total_weight": total_weight,
@@ -54,10 +63,13 @@ def get_portfolio_summary():
             "avg_price": (total_cost / total_weight * 15.244) if total_weight > 0 else 0
         }
     except Exception as e:
-        return f"Error ดึงพอร์ต: {str(e)}"
+        print(f"Error get_portfolio_summary: {e}")
+        return {"total_weight": 0, "avg_price": 0, "error": str(e)}
 
-# --- สำหรับ Agent 3: ดึงข่าว (ตัวอย่างใช้ดึงจากชีตถ้าพี่มีการเก็บข่าวไว้) ---
+# --- สำหรับ Agent 3: ดึงข่าว ---
 def get_market_context():
-    # ในอนาคตพี่สามารถเพิ่มฟังก์ชันดึงข่าวจาก API ภายนอกตรงนี้ได้ค่ะ
     prices = get_latest_prices()
-    return f"ขณะนี้ราคาทองสมาคมขายออกที่ {prices['hsh_sell']} บาท ตลาด Spot อยู่ที่ ${prices['spot']}"
+    # เช็กก่อนว่าเป็น dict ไหม
+    if isinstance(prices, dict):
+        return f"ขณะนี้ราคาทองสมาคมขายออกที่ {prices.get('hsh_sell')} บาท ตลาด Spot อยู่ที่ ${prices.get('spot')}"
+    return "ไม่สามารถดึงข้อมูลตลาดได้ในขณะนี้ค๊า"
